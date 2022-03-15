@@ -1,0 +1,39 @@
+{
+  "name": "tpm-2367",
+  "version": "1.0.0",
+  "description": "AWS Lambda Badge: Task-2 HTTP API",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/patternstormdf/TPM-2367.git"
+  },
+  "author": "claudi.paniagua@devfactory.com",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/patternstormdf/TPM-2367/issues"
+  },
+  "homepage": "https://github.com/patternstormdf/TPM-2367#readme",
+  "scripts": {
+    "comp": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "aws-cdk-lib": "^2.15.0",
+    "@pstorm/aws-cdk": "latest",
+    "@types/aws-lambda": "^8.10.93",
+    "@types/jest": "^24.0.22",
+    "@types/node": "^14.0.0",
+    "jest": "^24.9.0",
+    "ts-jest": "^24.1.0",
+    "ts-node": "^10.5.0",
+    "typescript": "latest"
+  },
+  "dependencies": {
+    "aws-sdk": "latest"
+  }
+}
