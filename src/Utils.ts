@@ -11,11 +11,6 @@ export namespace Application {
         export const pkType: DynamoDB.Table.AttributeType = "S"
         export const skName: string = "SK"
         export const skType: DynamoDB.Table.AttributeType = "S"
-        export const gsiPkName: string = "PK"
-        export const gsiPkType: DynamoDB.Table.AttributeType = "S"
-        export const gsiSkName: string = "Votes"
-        export const gsiSkType: DynamoDB.Table.AttributeType = "N"
-        export const gsiName: string = "Results"
     }
 }
 
