@@ -8,6 +8,8 @@ export namespace Result {
 
     export const pkValue: string = "CANDIDATE"
 
+    export const accessKey: string = "874345357454387"
+
     export namespace Get {
 
         async function retrieve(): Promise<Results> {
@@ -38,6 +40,10 @@ export namespace Result {
                 let response: Endpoint.Response
                 //Retrieve voting results from DynamoDB
                 try {
+                    if (!isDefined(event.queryStringParameters)) throw new Error("missing access key")
+                    const accessKey: string | undefined = event.queryStringParameters["accessKey"]
+                    if (!isDefined(accessKey)) throw new Error("missing access key")
+                    if (accessKey != Result.accessKey) throw new Error("incorrect access key")
                     const results: Results = await retrieve()
                     response = {
                         statusCode: 200,

@@ -3,6 +3,7 @@ import {APIGatewayProxyEvent} from "aws-lambda"
 import {handler} from "../src/Lambda"
 import {Vote} from "../src/Vote"
 import {Endpoint} from "../src/Endpoint"
+import {Result} from "../src/Result"
 
 test("deploy application", async(done) => {
     await app.deploy("p2vtpm")
@@ -84,9 +85,27 @@ test("vote for non existing candidate", async(done) => {
     done()
 })
 
-test("get results", async(done) => {
+test("get results with correct access key", async(done) => {
     event.resource = "/result"
     event.httpMethod = "GET"
+    event.queryStringParameters = {"accessKey": Result.accessKey}
+    const response: Endpoint.Response = await handler(event)
+    console.log(JSON.stringify(response))
+    done()
+})
+
+test("get results with missing access key", async(done) => {
+    event.resource = "/result"
+    event.httpMethod = "GET"
+    const response: Endpoint.Response = await handler(event)
+    console.log(JSON.stringify(response))
+    done()
+})
+
+test("get results with incorrect access key", async(done) => {
+    event.resource = "/result"
+    event.httpMethod = "GET"
+    event.queryStringParameters = {"accessKey": "1234"}
     const response: Endpoint.Response = await handler(event)
     console.log(JSON.stringify(response))
     done()
