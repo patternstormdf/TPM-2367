@@ -8,6 +8,7 @@ import {isDefined} from "./Utils"
 
 const endpoints: Map<string, Endpoint> = new Map()
 endpoints.set(Vote.Create.endpoint.key, Vote.Create.endpoint)
+endpoints.set(Vote.Close.endpoint.key, Vote.Close.endpoint)
 endpoints.set(Result.Get.endpoint.key, Result.Get.endpoint)
 
 export async function handler(event: APIGatewayProxyEvent, context?: Context): Promise<any> {

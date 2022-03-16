@@ -22,15 +22,20 @@ export namespace Result {
             }
             const output: AWS.DynamoDB.Types.QueryOutput = await ddb.query(input).promise()
             if (!isDefined(output.Items)) throw new Error("DynamoDB.scan returned undefined")
-            const results: Results = {
-                results: output.Items.map(item => {
+            const results: Result[] = output.Items.map(item => {
                     return {
                         candidate: item[App.Table.skName]["S"] as string,
                         votes: +(item["Votes"]["N"] as string)
                     }
                 })
+            return {
+                results: results.filter(result => result.candidate != "closed"),
+                final: isFinalResult(results)
             }
-            return results
+        }
+
+        function isFinalResult(results: Result[]): boolean {
+            return (results.filter(result => result.candidate == "closed")).length == 1
         }
 
         export const endpoint: Endpoint = new Endpoint(
@@ -67,4 +72,5 @@ export interface Result {
 
 export interface Results {
     results: Result[]
+    final: boolean
 }
