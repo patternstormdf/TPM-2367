@@ -132,7 +132,7 @@ test("simulate voting and results gathering", async (done) => {
     let votes: number = 0
 
     //Voting...
-    while (votes < 100) {
+    while (votes < 1000) {
         const candidate: string = Voting.candidates[random(0, 1)]
         const voter: string = `${randomUUID()}.gmail.com`
         try {
@@ -183,14 +183,14 @@ test("simulate voting and results gathering", async (done) => {
     })
     expect(results.final).toBe(true)
     done()
-}, 100000)
+}, 1000000)
 
 test("simulate voting and results gathering with concurrency", async (done) => {
     Voting.candidates.map(candidate => expectedResults.set(candidate, 0))
     let voteCount: number = 0
     let votes: Vote[] = []
 
-    while (voteCount < 100) {
+    while (voteCount < 1000) {
         votes = votes.concat({ candidate: Voting.candidates[random(0, 1)], voter: `${randomUUID()}.gmail.com`})
         voteCount = voteCount + 1
     }
@@ -245,4 +245,4 @@ test("simulate voting and results gathering with concurrency", async (done) => {
     })
     expect(results.final).toBe(true)
     done()
-}, 100000)
+}, 1000000)

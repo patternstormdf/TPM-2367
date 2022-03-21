@@ -1,8 +1,18 @@
-import { DynamoDBStreamEvent, Context } from "aws-lambda"
+import {DynamoDBStreamEvent, Context} from "aws-lambda"
 import * as AWS from "aws-sdk"
 import {DynamoDBRecord} from "aws-lambda/trigger/dynamodb-stream"
 import {isDefined, Application as App} from "./Utils"
 
+export interface DynamoDBStreamTumblingWindowEvent extends DynamoDBStreamEvent {
+    isFinalInvokeForWindow: boolean
+    isWindowTerminatedEarly: boolean
+    state: State
+}
+
+export type State = {
+    voteCounts: { [key: string]: number }
+    final: boolean
+}
 
 const ddb: AWS.DynamoDB = new AWS.DynamoDB({region: App.region})
 
@@ -47,10 +57,10 @@ async function getVoteCount(candidate: string): Promise<number | undefined> {
     return +(output.Item["Votes"]["N"] as string)
 }
 
-async function updateVoteCount(candidate: string): Promise<void> {
+async function updateVoteCount(candidate: string, newVotes: number): Promise<void> {
     let voteCount: number | undefined = await getVoteCount(candidate)
     if (!isDefined(voteCount)) voteCount = 0
-    voteCount = voteCount + 1
+    voteCount = voteCount + newVotes
     const input: AWS.DynamoDB.Types.PutItemInput = {
         TableName: App.Table.name,
         Item: {
@@ -62,20 +72,42 @@ async function updateVoteCount(candidate: string): Promise<void> {
     await ddb.putItem(input).promise()
 }
 
-export async function handler(event: DynamoDBStreamEvent, context?: Context): Promise<any> {
+
+function countVotes(state: State, records: DynamoDBRecord[]): State {
+    console.log(`Updating state=${JSON.stringify(state)}`)
+    const tally: State = (Object.keys(state).length == 0) ? {voteCounts: {}, final: false} : state
+    records.map(record => {
+        if (isClosing(record)) tally.final = true
+        else {
+            const candidate: string | undefined = getVotedCandidateFrom(record)
+            if (isDefined(candidate)) {
+                const voteCount: number | undefined = tally.voteCounts[candidate]
+                if (!isDefined(voteCount)) tally.voteCounts[candidate] = 1
+                else tally.voteCounts[candidate] = voteCount + 1
+            }
+        }
+    })
+    console.log(`State updated to ${JSON.stringify(tally)}`)
+    return tally
+}
+
+export async function handler(event: DynamoDBStreamTumblingWindowEvent, context?: Context): Promise<any> {
     console.log(`DynamoDB Streams Consumer event=${JSON.stringify(event)}`)
     if (isDefined(event)) {
-        await Promise.all(event.Records.map(async record => {
-            if (isClosing(record)) {
+        const state: State = countVotes(event.state, event.Records)
+        if (event.isFinalInvokeForWindow || event.isWindowTerminatedEarly) {
+            const votedCandidates: string[] = Array.from(Object.keys(state.voteCounts))
+            await Promise.all(votedCandidates.map(async candidate => {
+                console.log(`Updating vote count for candidate=${candidate}`)
+                await updateVoteCount(candidate, state.voteCounts[candidate] as number)
+            }))
+            if (state.final) {
                 console.log("Closing vote count...")
                 await saveClosing()
-            } else {
-                const candidate: string | undefined = getVotedCandidateFrom(record)
-                if (isDefined(candidate)) {
-                    console.log(`Updating vote count for candidate=${candidate}`)
-                    await updateVoteCount(candidate)
-                }
             }
-        }))
+        } else {
+            console.log(`Returning state=${JSON.stringify(state)}`)
+            return {state: state}
+        }
     }
 }

@@ -27,14 +27,15 @@ const lambdaConsumerPermissions: IAM.Permissions = new IAM.Permissions(
 )
 const lambdaConsumer: Lambda.Function = new Lambda.Function(
     `${App.prefixId}-lambda-consumer`, "src/consumer", tags,
-    "Lambda.handler", undefined, lambdaConsumerPermissions)
+    "Lambda.handler", undefined, lambdaConsumerPermissions, 1)
 app.addResource(lambdaConsumer)
 
 const deadLetterQueue: SQS.Queue = new SQS.Queue(`${App.prefixId}-dead-letter-queue`, 5, tags, false)
 app.addResource(deadLetterQueue)
 
 const eventSource: DynamoDB.EventSource = new DynamoDB.EventSource(`${App.prefixId}-event-source`,
-    table, lambdaConsumer, 1, false, 5, 1, deadLetterQueue)
+    table, lambdaConsumer, 20, false, 2, 1, deadLetterQueue,
+    20, 2)
 app.addEventSource(eventSource)
 
 const lambdaApiPermissions: IAM.Permissions = new IAM.Permissions(
@@ -44,7 +45,7 @@ const lambdaApiPermissions: IAM.Permissions = new IAM.Permissions(
 )
 const lambdaApi: Lambda.Function = new Lambda.Function(
     `${App.prefixId}-lambda-api`, "src/api", tags,
-    "Lambda.handler", undefined, lambdaApiPermissions, 50)
+    "Lambda.handler", undefined, lambdaApiPermissions)
 app.addResource(lambdaApi)
 
 const restApi: ApiGateway.API.REST.Lambda = ApiGateway.API.REST.Lambda.new(`${App.prefixId}-api-gw`, lambdaApi, tags)
