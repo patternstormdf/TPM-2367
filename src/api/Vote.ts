@@ -1,9 +1,10 @@
-import {APIGatewayProxyEvent} from "aws-lambda"
+import {APIGatewayProxyEvent, Context} from "aws-lambda"
 import {Endpoint} from "./Endpoint"
-import {isDefined} from "./Utils"
+import {isDefined, Lambda} from "./Utils"
 import {Application as App} from "./Utils"
 import * as AWS from "aws-sdk"
-import {Result} from "./Result";
+import {Result} from "./Result"
+import {APIGatewayProxyResult} from "aws-lambda/trigger/api-gateway-proxy"
 
 export namespace Vote {
     const ddb: AWS.DynamoDB = new AWS.DynamoDB({region: App.region})
@@ -100,6 +101,14 @@ export namespace Vote {
             })
     }
 
+}
+
+const endpoints: Map<string, Endpoint> = new Map()
+endpoints.set(Vote.Create.endpoint.key, Vote.Create.endpoint)
+endpoints.set(Vote.Close.endpoint.key, Vote.Close.endpoint)
+
+export async function handler(event: APIGatewayProxyEvent, context?: Context): Promise<APIGatewayProxyResult> {
+    return Lambda.handler(endpoints)(event)
 }
 
 export interface Vote {

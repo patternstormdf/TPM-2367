@@ -1,9 +1,8 @@
 import {app} from "../Application"
 import {APIGatewayProxyEvent} from "aws-lambda"
-import {handler} from "../src/api/Lambda"
-import {Vote, Voting} from "../src/api/Vote"
+import {Vote, Voting, handler as VoteHandler} from "../src/api/Vote"
 import {Endpoint} from "../src/api/Endpoint"
-import {Result, Results} from "../src/api/Result"
+import {Result, Results, handler as ResultHandler} from "../src/api/Result"
 import {randomUUID} from "crypto"
 import {isDefined} from "../src/api/Utils"
 
@@ -69,21 +68,21 @@ async function vote(voter: string, candidate: string): Promise<Endpoint.Response
     event.resource = "/vote"
     event.httpMethod = "POST"
     event.body = JSON.stringify(vote)
-    return await handler(event)
+    return await VoteHandler(event)
 }
 
 async function closeVoting(): Promise<Endpoint.Response> {
     event.resource = "/close"
     event.httpMethod = "POST"
     event.queryStringParameters = {"accessKey": Result.accessKey}
-    return await handler(event)
+    return await VoteHandler(event)
 }
 
 async function result(accessKey?: string): Promise<Endpoint.Response> {
     event.resource = "/result"
     event.httpMethod = "GET"
     if (isDefined(accessKey)) event.queryStringParameters = {"accessKey": accessKey}
-    return await handler(event)
+    return await ResultHandler(event)
 }
 
 test("vote for existing candidate", async (done) => {
@@ -130,6 +129,9 @@ const expectedResults: Map<string, number> = new Map()
 test("simulate voting and results gathering", async (done) => {
     Voting.candidates.map(candidate => expectedResults.set(candidate, 0))
     let votes: number = 0
+    let response: Endpoint.Response = await result(Result.accessKey)
+    let results: Results = JSON.parse(response.body)
+    results.results.map(result => expectedResults.set(result.candidate, result.votes))
 
     //Voting...
     while (votes < 1000) {
@@ -175,8 +177,8 @@ test("simulate voting and results gathering", async (done) => {
     }
 
     console.log("Retrieving final results...")
-    const response: Endpoint.Response = await result(Result.accessKey)
-    const results: Results = JSON.parse(response.body)
+    response = await result(Result.accessKey)
+    results = JSON.parse(response.body)
     console.log(`Final results=${JSON.stringify(results)}`)
     results.results.map(result => {
         expect(result.votes).toBe(expectedResults.get(result.candidate) as number)
@@ -189,6 +191,9 @@ test("simulate voting and results gathering with concurrency", async (done) => {
     Voting.candidates.map(candidate => expectedResults.set(candidate, 0))
     let voteCount: number = 0
     let votes: Vote[] = []
+    let response: Endpoint.Response = await result(Result.accessKey)
+    let results: Results = JSON.parse(response.body)
+    results.results.map(result => expectedResults.set(result.candidate, result.votes))
 
     while (voteCount < 1000) {
         votes = votes.concat({ candidate: Voting.candidates[random(0, 1)], voter: `${randomUUID()}.gmail.com`})
@@ -237,8 +242,8 @@ test("simulate voting and results gathering with concurrency", async (done) => {
     }
 
     console.log("Retrieving final results...")
-    const response: Endpoint.Response = await result(Result.accessKey)
-    const results: Results = JSON.parse(response.body)
+    response = await result(Result.accessKey)
+    results = JSON.parse(response.body)
     console.log(`Final results=${JSON.stringify(results)}`)
     results.results.map(result => {
         expect(result.votes).toBe(expectedResults.get(result.candidate) as number)

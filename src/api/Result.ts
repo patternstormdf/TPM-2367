@@ -1,7 +1,8 @@
 import {Endpoint} from "./Endpoint"
-import {APIGatewayProxyEvent} from "aws-lambda"
-import {Application as App, isDefined} from "./Utils"
+import {APIGatewayProxyEvent, Context} from "aws-lambda"
+import {Application as App, isDefined, Lambda} from "./Utils"
 import * as AWS from "aws-sdk"
+import {APIGatewayProxyResult} from "aws-lambda/trigger/api-gateway-proxy"
 
 export namespace Result {
     const ddb: AWS.DynamoDB = new AWS.DynamoDB({region: App.region})
@@ -63,6 +64,13 @@ export namespace Result {
                 return response
             })
     }
+}
+
+const endpoints: Map<string, Endpoint> = new Map()
+endpoints.set(Result.Get.endpoint.key, Result.Get.endpoint)
+
+export async function handler(event: APIGatewayProxyEvent, context?: Context): Promise<APIGatewayProxyResult> {
+    return Lambda.handler(endpoints)(event)
 }
 
 export interface Result {

@@ -1,7 +1,8 @@
-import {Application, Lambda, ApiGateway, DynamoDB, IAM, SQS} from "@pstorm/aws-cdk"
+import {Application, Lambda, DynamoDB, IAM, SQS} from "@pstorm/aws-cdk"
 import * as apigw from 'aws-cdk-lib/aws-apigateway'
 import {Application as App} from "./src/api/Utils"
 import * as ddb from "aws-cdk-lib/aws-dynamodb"
+import {Tags} from "aws-cdk-lib";
 
 const tags: Application.Resource.Tag[] = [
     {key: "owner", value : "claudi.paniagua@devfactory.com"},
@@ -38,25 +39,38 @@ const eventSource: DynamoDB.EventSource = new DynamoDB.EventSource(`${App.prefix
     20, 2)
 app.addEventSource(eventSource)
 
-const lambdaApiPermissions: IAM.Permissions = new IAM.Permissions(
-    ["dynamodb:PutItem", "dynamodb:Query"],
+const lambdaVoteApiPermissions: IAM.Permissions = new IAM.Permissions(
+    ["dynamodb:PutItem"],
     "Allow",
     [table]
 )
-const lambdaApi: Lambda.Function = new Lambda.Function(
-    `${App.prefixId}-lambda-api`, "src/api", tags,
-    "Lambda.handler", undefined, lambdaApiPermissions)
-app.addResource(lambdaApi)
+const lambdaVoteApi: Lambda.Function = new Lambda.Function(
+    `${App.prefixId}-lambda-vote-api`, "src/api", tags,
+    "Vote.handler", undefined, lambdaVoteApiPermissions)
+const lambdaVoteApiInstance: Lambda.Function.Instance = app.addResource(lambdaVoteApi) as Lambda.Function.Instance
+const lambdaVoteApiIntegration: apigw.LambdaIntegration = new apigw.LambdaIntegration(lambdaVoteApiInstance.asConstruct)
 
-const restApi: ApiGateway.API.REST.Lambda = ApiGateway.API.REST.Lambda.new(`${App.prefixId}-api-gw`, lambdaApi, tags)
-const restApiInstance: ApiGateway.API.REST.Lambda.Instance = app.addResource(restApi) as ApiGateway.API.REST.Lambda.Instance
-const restApiRoot: apigw.IResource = (restApiInstance.asConstruct as apigw.IRestApi).root
+const lambdaResultApiPermissions: IAM.Permissions = new IAM.Permissions(
+    ["dynamodb:Query"],
+    "Allow",
+    [table]
+)
+const lambdaResultApi: Lambda.Function = new Lambda.Function(
+    `${App.prefixId}-lambda-result-api`, "src/api", tags,
+    "Result.handler", undefined, lambdaResultApiPermissions, 1)
+const lambdaResultApiInstance: Lambda.Function.Instance = app.addResource(lambdaResultApi) as Lambda.Function.Instance
+const lambdaResultApiIntegration: apigw.LambdaIntegration = new apigw.LambdaIntegration(lambdaResultApiInstance.asConstruct)
+
+const restApi = new apigw.RestApi(app.stack, `${App.prefixId}-api-gw`)
+const restApiTags: Tags = Tags.of(restApi)
+tags.map(tag => restApiTags.add(tag.key, tag.value))
+const restApiRoot: apigw.IResource = restApi.root
 const vote: apigw.IResource = restApiRoot.addResource("vote")
-vote.addMethod("POST")
+vote.addMethod("POST", lambdaVoteApiIntegration)
 const close: apigw.IResource = restApiRoot.addResource("close")
-close.addMethod("POST")
+close.addMethod("POST", lambdaVoteApiIntegration)
 const result: apigw.IResource = restApiRoot.addResource("result")
-result.addMethod("GET")
+result.addMethod("GET", lambdaResultApiIntegration)
 
 
 
